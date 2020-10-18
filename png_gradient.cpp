@@ -5,7 +5,7 @@
  *
  * @author Rich Lowe
  */
- 
+
 /** Header includes */
 #include <iostream>
 #include <fstream>
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 	int c;
 
 	opterr = 0;
-	
+
 	/** Look for option switches */
 	while ( (c = getopt(argc, argv, "f:d:p:a:w:h:r:g:b:t:")) != -1 ) {
 		switch ( c ) {
@@ -57,42 +57,42 @@ int main(int argc, char **argv) {
 			default: abort();
 		}
 	}
-	
+
 	/** Verify width and height entered */
 	if ( width <= 0 || height <= 0 ) {
 		cout<<"png_gradient: please specify a valid width and height of the image."<<endl<<endl;
 		usage();
 		return 1;
 	}
-	
+
 	/** Check for valid bit depth */
 	if ( bit_depth != 8 && bit_depth != 16 ) {
 		cout<<"png_gradient: only 8 and 16-bit depths are allowed."<<endl<<endl;
 		usage();
 		return 1;
 	}
-	
+
 	/** Check for valid filter type */
 	if ( filter_type < 0 || filter_type > 4 ) {
 		cout<<"png_gradient: invalid filter type, only methods 0-4 are allowed."<<endl<<endl;
 		usage();
 		return 1;
 	}
-	
+
 	/** Make sure filename was provided */
 	if ( filename.length() <= 0 ) {
 		cout<<"png_gradient: please specify a valid filename for the image."<<endl<<endl;
 		usage();
 		return 1;
 	}
-	
+
 	/** Verify valid patterns are used */
 	if ( !valid_pattern(red_pattern) || !valid_pattern(green_pattern) || !valid_pattern(blue_pattern) || (colour_type == 6 && !valid_pattern(alpha_pattern)) ) {
 		cout<<"png_gradient: invalid pattern specified."<<endl<<endl;
 		usage();
 		return 1;
 	}
-	
+
 	/** Try to create the gradient, report any errors */
 	try {
 		create_gradient(filename, width, height, bit_depth, colour_type, red_pattern, green_pattern, blue_pattern, alpha_pattern, filter_type);
@@ -100,80 +100,80 @@ int main(int argc, char **argv) {
 		cout<<error<<endl;
 		return 1;
 	}
-	
+
     return 0;
 }
 
 /** Create an example truecolour image with a gradient */
-void create_gradient(string filename, unsigned int width, unsigned int height, unsigned char bit_depth, unsigned char colour_type, string red_pattern, string green_pattern, string blue_pattern, string alpha_pattern, unsigned char filter_type) {	
+void create_gradient(string filename, unsigned int width, unsigned int height, unsigned char bit_depth, unsigned char colour_type, string red_pattern, string green_pattern, string blue_pattern, string alpha_pattern, unsigned char filter_type) {
 	/** Self-allocate uncompressed reference channel arrays */
 	unsigned short *red = new unsigned short[height*width];
 	unsigned short *green = new unsigned short[height*width];
 	unsigned short *blue = new unsigned short[height*width];
 	unsigned short *alpha;
-	
+
 	/** If with alpha, allocate alpha array */
 	if ( colour_type == 6 )
 		alpha = new unsigned short[height*width];
-	
+
 	unsigned int row, col;
-		
+	
 	/** Instantiate the image with the bit depth, colour type, and filter type */
 	LTPNG image(bit_depth, colour_type, filter_type);
-	
+
 	/** Load the reference channel arrays with test pixels */
-	for ( row = 0; row < height; row++ ) {		
+	for ( row = 0; row < height; row++ ) {
 		for ( col = 0; col < width; col++ ) { /** r = s, g = se, b = nw is nice */
 			red[row*width + col] = image.max_val*get_pattern(red_pattern, row, col, width, height);
 			green[row*width + col] = image.max_val*get_pattern(green_pattern, row, col, width, height);
 			blue[row*width + col] = image.max_val*get_pattern(blue_pattern, row, col, width, height);
-			
+
 			if ( colour_type == 6 )
 				alpha[row*width + col] = image.max_val*get_pattern(alpha_pattern, row, col, width, height);
 		}
 	}
-	
+
 	/** Calculate pixel size */
 	unsigned char pixel_size = colour_type == 2 ? 3 : 4;
-	
+
 	cout<<"Creating new "<<static_cast<unsigned int>(bit_depth)<<"-bit truecolour image";
-	
+
 	if ( colour_type == 6 )
 		cout<<" with alpha";
-		
+
 	cout<<"..."<<endl;
 	cout<<" Red pixel pattern: "<<red_pattern<<endl;
 	cout<<" Green pixel pattern: "<<green_pattern<<endl;
 	cout<<" Blue pixel pattern: "<<blue_pattern<<endl;
-	
+
 	if ( colour_type == 6 )
 		cout<<" Alpha pixel pattern: "<<alpha_pattern<<endl;
-	
+
 	cout<<" Number of pixels/channel size: "<<(height*width)<<endl;
 	cout<<" Pixel width: "<<width<<endl;
 	cout<<" Pixel height: "<<height<<endl;
 	cout<<" Pixel size: "<<(pixel_size*(3-16/bit_depth))<<endl;
 	cout<<" Scan line size: "<<(width*pixel_size*(3-16/bit_depth) + 1)<<endl;
 	cout<<" Total uncompressed image data size: "<<(width*height*pixel_size*(3-16/bit_depth) + height + 1)<<endl;
-		
+
 	/** Image file */
 	ofstream file(filename, ios::binary);
-	
+
 	/** Pass file and create image */
 	image.create_image(file, width, height, red, green, blue, alpha);
-		
+
 	/** Close the image file */
 	file.close();
-	
+
 	cout<<" Total compressed image data size: "<<image.file_size<<endl<<endl;
 
 	cout<<"Done!"<<endl;
-	
+
 	/** Clean up self-allocated memory */
 	delete[] red;
 	delete[] green;
 	delete[] blue;
-	
+
 	/** Clean up self-allocated memory if with alpha */
 	if ( colour_type == 6 )
 		delete[] alpha;
@@ -198,17 +198,17 @@ double get_pattern(string pattern, unsigned int row, unsigned int col, unsigned 
 
 /** Validate channel pattern */
 bool valid_pattern(string pattern) {
-	if ( !pattern.compare("n") ) return true; 
-	else if ( !pattern.compare("s") ) return true; 
-	else if ( !pattern.compare("e") ) return true; 
-	else if ( !pattern.compare("w") ) return true; 
-	else if ( !pattern.compare("nw") ) return true; 
-	else if ( !pattern.compare("ne") ) return true; 
-	else if ( !pattern.compare("se") ) return true; 
-	else if ( !pattern.compare("sw") ) return true; 
-	else if ( !pattern.compare("full") ) return true; 
-	else if ( !pattern.compare("half") ) return true; 
-	else if ( !pattern.compare("none") ) return true; 
+	if ( !pattern.compare("n") ) return true;
+	else if ( !pattern.compare("s") ) return true;
+	else if ( !pattern.compare("e") ) return true;
+	else if ( !pattern.compare("w") ) return true;
+	else if ( !pattern.compare("nw") ) return true;
+	else if ( !pattern.compare("ne") ) return true;
+	else if ( !pattern.compare("se") ) return true;
+	else if ( !pattern.compare("sw") ) return true;
+	else if ( !pattern.compare("full") ) return true;
+	else if ( !pattern.compare("half") ) return true;
+	else if ( !pattern.compare("none") ) return true;
 
 	return false;
 }
